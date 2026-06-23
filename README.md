@@ -1,7 +1,7 @@
 # 🛡️ Log Sentinel
 ### AI-Powered Windows Event Log Threat Analyzer
 
-Automatically fetches Windows Event Logs and uses Claude AI to detect malicious activity — no manual log entry required.
+Automatically fetches Windows Event Logs and uses an AI model to detect malicious or suspicious activity — no manual log review required.
 
 ---
 
@@ -10,30 +10,35 @@ Automatically fetches Windows Event Logs and uses Claude AI to detect malicious 
 ```
 log-sentinel/
 ├── backend/
-│   ├── main.py           ← FastAPI server (fetches logs + calls Claude)
+│   ├── main.py           ← FastAPI server (fetches logs + calls Groq AI)
 │   ├── requirements.txt  ← Python dependencies
 │   └── start.bat         ← One-click start script for Windows
-└── frontend/
-    ├── public/
-    │   └── index.html
-    ├── src/
-    │   ├── index.js
-    │   └── App.jsx       ← React dashboard
-    └── package.json
+├── frontend/
+│   ├── public/
+│   │   └── index.html
+│   ├── src/
+│   │   ├── index.js
+│   │   └── App.jsx       ← React dashboard
+│   └── package.json
+└── .gitignore
 ```
 
 ---
 
 ## ⚙️ Setup Instructions
 
-### Step 1 — Get your Anthropic API Key
-1. Go to https://console.anthropic.com
-2. Create an account and generate an API key
-3. Copy the key (starts with `sk-ant-...`)
+### Step 1 — Get a free Groq API key
+
+1. Go to https://console.groq.com
+2. Sign up (no credit card required)
+3. Go to **API Keys** → **Create API Key**
+4. Copy the key (starts with `gsk_...`)
+
+> ⚠️ **Never commit your API key to GitHub.** Set it as an environment variable each session (see below), or in a local `.env`/`start.bat` that you keep out of version control. GitHub's push protection will block commits containing a detected API key — if that happens, remove the key from the file, amend the commit, and revoke + regenerate the key as a precaution.
 
 ---
 
-### Step 2 — Start the Python Backend
+### Step 2 — Start the Python backend
 
 > **Requires:** Python 3.10+ installed on Windows
 
@@ -43,23 +48,24 @@ cd backend
 # Install dependencies
 pip install -r requirements.txt
 
-# Set your API key (Windows Command Prompt)
-set ANTHROPIC_API_KEY=sk-ant-your-key-here
+# Set your API key (PowerShell)
+$env:GROQ_API_KEY="gsk_your_key_here"
 
 # Start the server
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
-
-**OR** just edit `start.bat`, paste your API key, and double-click it.
 
 You should see:
 ```
 INFO:     Uvicorn running on http://0.0.0.0:8000
+INFO:     Application startup complete.
 ```
+
+> Run your terminal **as Administrator** if you want to scan the **Security** log channel — Windows requires elevated privileges to read it. **System** and **Application** channels work without admin rights.
 
 ---
 
-### Step 3 — Start the React Frontend
+### Step 3 — Start the React frontend
 
 > **Requires:** Node.js 18+ installed
 
@@ -83,11 +89,11 @@ The dashboard opens at **http://localhost:3000**
 2. Select a **Log Channel** (Security / System / Application)
 3. Choose **Max Events** and **Time Range**
 4. Click **Scan Now**
-5. Claude AI analyzes the logs and shows:
-   - Overall Risk Level (Critical / High / Medium / Low)
-   - Detected threats with descriptions
-   - Recommendations for each threat
-   - Raw log sample
+5. The AI analyzes the logs and shows:
+   - Overall risk level (Critical / High / Medium / Low) on a gauge
+   - Severity breakdown and top threat categories
+   - Detailed findings with recommendations
+   - A raw log sample tab
 
 ---
 
@@ -95,26 +101,37 @@ The dashboard opens at **http://localhost:3000**
 
 | Event ID | Threat |
 |----------|--------|
-| 4625 | Failed login attempts / Brute Force |
+| 4625 | Failed login attempts / brute force |
 | 4720 | New user account created |
 | 4732 | User added to Administrators group |
-| 4648 | Explicit credential logon (Pass-the-Hash) |
+| 4648 | Explicit credential logon (pass-the-hash style) |
+| 5379 | Credential Manager credentials accessed |
 | 7045 | Suspicious new service installed |
 | 4688 | Suspicious process creation |
-| 4697 | Service installed in the system |
 | 1102 | Audit log cleared (log tampering) |
+
+The AI also reasons over log context beyond fixed signatures — e.g. flagging unusual timing, repeated access patterns, or combinations of events that suggest an attack chain.
 
 ---
 
 ## 🖥️ Demo Mode
 
-Running the backend on **Mac/Linux**? No problem — it automatically uses realistic mock Windows logs so you can demo the full app without a Windows machine.
+For a public/deployed demo, you don't need to host the backend at all.
+
+- **`DEMO_MODE`** in `frontend/src/App.jsx` — set to `true` before deploying. "Scan Now" then returns one of several pre-built realistic scenarios (randomly chosen) instantly, entirely in the browser — no backend call, no server to host.
+- **`FORCE_DEMO`** in `backend/main.py` — a separate switch, only relevant if you choose to run a real backend somewhere publicly. Not needed for the simple frontend-only demo above.
+
+To deploy the demo: set `DEMO_MODE = true` in `App.jsx`, then deploy just the `frontend` folder to any static host (Vercel, Netlify, GitHub Pages). That's the entire deployment — no backend hosting, no environment variables, no server costs.
+
+For your own local use with real Windows logs, keep `DEMO_MODE = false` and run the backend as described above.
+
+A website can never read a visitor's local system logs directly — that's a browser security boundary, not a limitation of this app. The deployed version is intentionally a demo for that reason; the real, local-log version only runs when you start the backend on your own Windows machine.
 
 ---
 
 ## 🔄 Auto-Refresh
 
-Enable **Auto-refresh** in the top-right to re-scan every 2 minutes automatically — great for live monitoring demos.
+Enable **Auto-refresh** in the top-right to re-scan every 2 minutes automatically — useful for simulating continuous monitoring.
 
 ---
 
@@ -122,17 +139,17 @@ Enable **Auto-refresh** in the top-right to re-scan every 2 minutes automaticall
 
 | Layer | Technology |
 |-------|-----------|
-| AI Analysis | Claude claude-sonnet-4-6 (Anthropic) |
+| AI Analysis | Groq API — Llama 3.1 (8B Instant) |
 | Backend | Python + FastAPI |
 | Log Fetching | PowerShell (`Get-WinEvent`) |
-| Frontend | React 18 |
-| Styling | Inline CSS (dark theme) |
+| Frontend | React 18, fully responsive (mobile/tablet/desktop) |
+| Styling | Inline CSS — black / white / blue / grey theme |
 
 ---
 
 ## 📌 Notes for Internship Demo
 
-- Run the backend **as Administrator** for full access to Security logs
-- The Security channel requires elevated privileges on Windows
-- For a live demo, use **Demo Mode** (non-Windows) to show sample threats
-- The app detects threats in real-time — no database or ML training needed
+- Run the backend **as Administrator** for full access to Security logs.
+- Groq's free tier has a token-per-minute rate limit — the backend caps how many logs are sent per request to stay within it.
+- The backend recomputes threat counts from the AI's actual findings list rather than trusting the model's self-reported numbers, since smaller LLMs can be inconsistent with structured JSON fields.
+- The app detects threats in real time — no database, no model training, and (outside of demo mode) no stored history between scans.
