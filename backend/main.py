@@ -39,7 +39,7 @@ GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
 # this avoids spending API credits per visitor.
 #
 # Keep this False for your own local/Windows use with real logs.
-FORCE_DEMO = False
+FORCE_DEMO = True
 
 # ─────────────────────────────────────────────
 # MODELS

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 // When true, "Scan Now" returns fixed sample data instantly — no backend
 // needed at all. Keep it false for local development against your real
 // Python backend (see backend/main.py).
-const DEMO_MODE = false;
+const DEMO_MODE = true;
 
 // Only used when DEMO_MODE is false — your local backend's address.
 const API = "http://localhost:8000";
