@@ -147,7 +147,7 @@ Enable **Auto-refresh** in the top-right to re-scan every 2 minutes automaticall
 
 ---
 
-## 📌 Notes for Internship Demo
+## 📌 Demo Mode
 
 - Run the backend **as Administrator** for full access to Security logs.
 - Groq's free tier has a token-per-minute rate limit — the backend caps how many logs are sent per request to stay within it.
